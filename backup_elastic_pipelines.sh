@@ -4,7 +4,7 @@ SERVER=https://localhost:9200
 # Assume .netrc is used for creds, so use curl "-n" option
 
 # Dump all pipelines into json via curl so we don't need requests.
-curl -nks $SERVER/_cluster/state?filter_path=metadata.ingest.pipeline > pipelines.json
+curl -nks "$SERVER/_cluster/state?filter_path=metadata.ingest.pipeline&pretty" > pipelines.json
 
 # Avoid use of jq since it isn't ubiquitous.  
 # Inline Python because I hope the json module is there and I don't know any other way.
