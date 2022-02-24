@@ -30,5 +30,20 @@ for pipeline_id in $PIPELINES; do
     curl -s -n $SERVER/api/logstash/pipeline/$pipeline_id | python -mjson.tool > $pipeline_id.logstash_pipeline.json
     # Parse json in Python 2.x (maybe 3.x works too) and pull out pipeline blob and dump it to a text file for easier review.
     # Ensure UTF-8 is enabled so funny characters don't break things.  Clean up cr/lf to use the OS specific one instead of assuming always non-Windows.
-    PYTHONIOENCODING=UTF-8 python -c "import json, os; print(json.loads(open('$pipeline_id.logstash_pipeline.json','r').read())['pipeline'].replace('\r\n', os.linesep))" > $pipeline_id.logstash_pipeline.txt
+    PYTHONIOENCODING=UTF-8 python > $pipeline_id.logstash_pipeline.txt <<HEREDOC
+import json, os, re
+# Redact passwords that aren't referenced via variables like \${...}
+# Include escaped backslashes since the raw pipeline content in the json double escapes out quotes.
+redact = re.compile(r'password\s+=>\s+(\\\\){0,1}\"(?!\${[^"]+}).*?\"')
+
+d = open('$pipeline_id.logstash_pipeline.json','r').read()
+
+# Rewrite file, leaving REDACTED passwords without quotes to not silently fail credentials until you put a password or variable back in.
+open('$pipeline_id.logstash_pipeline.json','w').write(redact.sub('password => REDACTED', d))
+
+# Output to stdout redacted pipeline content in pretty form.  Again, no quotes around REDACTED to force you to fix the passwords.
+txt = redact.sub('password => REDACTED', json.loads(d)['pipeline'] )
+
+print(txt.replace('\r\n', os.linesep))
+HEREDOC
 done
